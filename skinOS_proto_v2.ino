@@ -9,6 +9,7 @@
 #endif
 
 const int coilPin = 5;
+int panelDelay = 500;
 
 #define BOARDLEDS 6
 Adafruit_NeoPixel panelStrip = Adafruit_NeoPixel(32, BOARDLEDS, NEO_GRB + NEO_KHZ800);
@@ -26,24 +27,29 @@ void setup() {
   panelStrip.show(); // Initialize all pixels to 'off'
 
   //attachInterrupt(digitalPinToInterrupt(coilPin), panelOn, LOW);
-  panelOn();
+  
+  panelOn(panelLeft);
+  //delay(panelDelay);
+  panelOn(panelCenter);
+  //delay(panelDelay);
+  panelOn(panelRight);
 }
 
 void loop() {
   //Serial.println(digitalRead(5));
-
+  
 }
 
-void panelOn() {
+void panelOn(int *panel) { 
   int colorCounter = 0;
   while (colorCounter <= 255) {
     for(int i = 0; i < 8; i++) {
-        panelStrip.setPixelColor(panelLeft[i], panelStrip.Color(colorCounter,colorCounter,colorCounter));
+        panelStrip.setPixelColor(panel[i], panelStrip.Color(colorCounter,colorCounter,colorCounter));
         panelStrip.show();
         colorCounter += 1;
         delay(10);
     }
-  }
+  } 
 }
 
 
