@@ -1,11 +1,11 @@
 #include <Adafruit_NeoPixel.h>
 #ifdef __AVR__
-  #include <avr/power.h>
+#include <avr/power.h>
 #endif
 
 #if defined(ARDUINO_SAMD_ZERO) && defined(SERIAL_PORT_USBVIRTUAL)
-  // Required for Serial on Zero based boards
-  #define Serial SERIAL_PORT_USBVIRTUAL
+// Required for Serial on Zero based boards
+#define Serial SERIAL_PORT_USBVIRTUAL
 #endif
 
 const int coilPin = 5;
@@ -13,26 +13,39 @@ const int coilPin = 5;
 #define BOARDLEDS 6
 Adafruit_NeoPixel panelStrip = Adafruit_NeoPixel(32, BOARDLEDS, NEO_GRB + NEO_KHZ800);
 
-int panelLeft[]   = {1,2,9,10,17,18,25,26};
-int panelCenter[] = {4,5,12,13,20,21,28,29};
-int panelRight[]  = {7,8,15,16,23,24,31,32};
+int panelLeft[]   = {0, 1, 8, 9, 16, 17, 24, 25};
+int panelCenter[] = {3, 4, 11, 12, 19, 20, 27, 28};
+int panelRight[]  = {6, 7, 14, 15, 22, 23, 30, 31};
 
 
 void setup() {
   Serial.begin(9600);
-  
+
   panelStrip.setBrightness(50);
   panelStrip.begin();
   panelStrip.show(); // Initialize all pixels to 'off'
 
-  attachInterrupt(digitalPinToInterrupt(coilPin), panelOn, LOW);
+  //attachInterrupt(digitalPinToInterrupt(coilPin), panelOn, LOW);
+  panelOn();
 }
 
 void loop() {
-  Serial.println(digitalRead(5));
+  //Serial.println(digitalRead(5));
+
 }
 
 void panelOn() {
-  Serial.println("panelOn()");
+  int colorCounter = 0;
+  while (colorCounter <= 255) {
+    for(int i = 0; i < 8; i++) {
+        panelStrip.setPixelColor(panelLeft[i], panelStrip.Color(colorCounter,colorCounter,colorCounter));
+        panelStrip.show();
+        colorCounter += 1;
+        delay(10);
+    }
+  }
 }
+
+
+
 
