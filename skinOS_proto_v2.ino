@@ -35,20 +35,34 @@ void loop() {
   Serial.println(touch);
 }
 
-void launchPanels() {
+void setAllPanels() {
   panelSet(panelLeft);
   panelSet(panelCenter);
   panelSet(panelRight);
 }
 
 void panelSet(int *panel) {
-  int colorCounter = 0;
-  while (colorCounter <= 127) {
-    for (int i = 0; i < 8; i++) {
-      panelStrip.setPixelColor(panel[i], panelStrip.Color(colorCounter, colorCounter, colorCounter));
-      panelStrip.show();
-      colorCounter += 3;
-      delay(10);
+  if (!touch) { // we're turning on
+    int colorCounter = 0;
+    int threshold = 127;
+    while (colorCounter <= threshold) {
+      for (int i = 0; i < 8; i++) {
+        panelStrip.setPixelColor(panel[i], panelStrip.Color(colorCounter, colorCounter, colorCounter));
+        panelStrip.show();
+        colorCounter += 3;
+        delay(10);
+      }
+    }
+  } else {
+    int colorCounter = 127;
+    int threshold = 0;
+    while (colorCounter >= threshold) {
+      for (int i = 0; i < 8; i++) {
+        panelStrip.setPixelColor(panel[i], panelStrip.Color(colorCounter, colorCounter, colorCounter));
+        panelStrip.show();
+        colorCounter -= 1;
+        delay(10);
+      }
     }
   }
 }
@@ -58,12 +72,13 @@ void checkCapSensors() {
   long cap2 =  cs_2.capacitiveSensor(30);
   if ( cap1 > 200 && cap2 > 200) {
     if (!touch) {
-      launchPanels();
+      setAllPanels();
       touch = true;
     }
   } else {
-    if(touch) {
+    if (touch) {
       if (offCounter > 100) {
+        setAllPanels();
         offCounter = 0;
         touch = false;
       } else {
