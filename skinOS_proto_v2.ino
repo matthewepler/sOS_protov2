@@ -1,5 +1,6 @@
 #include <Adafruit_NeoPixel.h>
 #include <CapacitiveSensor.h>
+#include <EnableInterrupt.h>
 
 #define PANELPIN 6
 Adafruit_NeoPixel panelStrip = Adafruit_NeoPixel(32, PANELPIN, NEO_GRB + NEO_KHZ800);
@@ -12,6 +13,10 @@ CapacitiveSensor   cs_2 = CapacitiveSensor(9, 13); // 1M resistor between pins 5
 boolean touch;
 int offCounter;
 
+const int coilPin = 11;
+boolean docked;
+
+
 void setup() {
   Serial.begin(9600);
   pinMode(2, OUTPUT);
@@ -20,12 +25,12 @@ void setup() {
   panelStrip.begin();
   panelStrip.show(); // Initialize all pixels to 'off'
 
-  //attachInterrupt(digitalPinToInterrupt(coilPin), panelOn, LOW);
-}
+  pinMode(coilPin, INPUT_PULLUP);  // See http://arduino.cc/en/Tutorial/DigitalPins
+  enableInterrupt(coilPin, dockChange, CHANGE);}
 
 void loop() {
   checkCapSensors(); // has 10ms delay
-
+  
   if (touch) {
     analogWrite(10, 122);
   } else {
@@ -89,6 +94,8 @@ void checkCapSensors() {
   delay(10);
 }
 
-
+void dockChange() {
+  digitalWrite(2, !digitalRead(11));
+}
 
 
