@@ -2,42 +2,59 @@
 #include <CapacitiveSensor.h>
 #include <EnableInterrupt.h>
 
-#define PANELPIN 6
-Adafruit_NeoPixel panelStrip = Adafruit_NeoPixel(32, PANELPIN, NEO_GRB + NEO_KHZ800);
+const int ledPin = 6;
+Adafruit_NeoPixel panelStrip = Adafruit_NeoPixel(32, ledPin, NEO_GRB + NEO_KHZ800);
 int panelLeft[]   = {0, 1, 8, 9, 16, 17, 24, 25};
 int panelCenter[] = {3, 4, 11, 12, 19, 20, 27, 28};
 int panelRight[]  = {6, 7, 14, 15, 22, 23, 30, 31};
 
-CapacitiveSensor   cs_1 = CapacitiveSensor(5, 12); // 1M resistor between pins 5 & 12, pin 12 is sensor pin
-CapacitiveSensor   cs_2 = CapacitiveSensor(9, 13); // 1M resistor between pins 5 & 12, pin 12 is sensor pin
+CapacitiveSensor   cs_1 = CapacitiveSensor(5, 12); // 1M resistor between pins
+CapacitiveSensor   cs_2 = CapacitiveSensor(9, 13); // 1M resistor between pins
+const int touchThreshold = 200;
 boolean touch;
 int offCounter;
 
 const int coilPin = 11;
+int changeCounter;
 boolean docked;
+
+const int motorPin = 10;
+const int motorSpeed = 122;
+
+const int debugLED = 2;
 
 
 void setup() {
   Serial.begin(9600);
-  pinMode(2, OUTPUT);
+  pinMode(debugLED, OUTPUT); // debugging LED
+  pinMode(motorPin, OUTPUT);
+  pinMode(coilPin, INPUT_PULLUP);
+
+  enableInterrupt(coilPin, dockChange, CHANGE);
 
   panelStrip.setBrightness(2);
   panelStrip.begin();
   panelStrip.show(); // Initialize all pixels to 'off'
 
-  pinMode(coilPin, INPUT_PULLUP);  // See http://arduino.cc/en/Tutorial/DigitalPins
-  enableInterrupt(coilPin, dockChange, CHANGE);}
+  dockChange();
+}
 
 void loop() {
   checkCapSensors(); // has 10ms delay
-  
-  if (touch) {
-    analogWrite(10, 122);
+
+  if (docked) {
+    digitalWrite(debugLED, HIGH);
   } else {
-    analogWrite(10, 0);
+    digitalWrite(debugLED, LOW);
   }
 
-  Serial.println(touch);
+  if (touch && !docked) {
+    analogWrite(motorPin, motorSpeed); // vibration motors
+  } else {
+    analogWrite(motorPin, 0);
+  }
+
+  Serial.println(docked);
 }
 
 void setAllPanels() {
@@ -58,7 +75,8 @@ void panelSet(int *panel) {
         delay(10);
       }
     }
-  } else {
+  } else { // we're turning off
+    analogWrite(motorPin, 0);
     int colorCounter = 127;
     int threshold = 0;
     while (colorCounter >= threshold) {
@@ -75,7 +93,7 @@ void panelSet(int *panel) {
 void checkCapSensors() {
   long cap1 =  cs_1.capacitiveSensor(30);
   long cap2 =  cs_2.capacitiveSensor(30);
-  if ( cap1 > 200 && cap2 > 200) {
+  if ( cap1 > touchThreshold && cap2 > touchThreshold && !docked) {
     if (!touch) {
       setAllPanels();
       touch = true;
@@ -95,7 +113,7 @@ void checkCapSensors() {
 }
 
 void dockChange() {
-  digitalWrite(2, !digitalRead(11));
+  digitalRead(coilPin)==HIGH ? docked=true : docked=false;
 }
 
 
