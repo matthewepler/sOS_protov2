@@ -15,12 +15,12 @@ const int touchThreshold = 200;
 boolean touch;
 int offCounter;
 
-const int coilPin = 11;
-int changeCounter;
+const int coilPin = A5;
+int coilVal;
 boolean docked;
 
 const int motorPin = 10;
-const int motorSpeed = 122;
+const int motorSpeed = 200;
 
 const int ringPin = 3;
 const int ringTotalLEDs = 16;
@@ -31,9 +31,8 @@ int fadeDirection = 1;
 int startLen  = 3;  // how long is the snake
 int startHead = 3; // which pixel is the head
 int startDelay = 10;
-int startLapCounter = 3;
+int startLapCounter = 0;
 boolean settled = true;
-boolean start = false;
 
 const int debugLED = 2;
 long prevDockTime = 0;
@@ -45,9 +44,7 @@ void setup() {
   pinMode(motorPin, OUTPUT);
   pinMode(coilPin, INPUT_PULLUP);
 
-  enableInterrupt(coilPin, dockChange, CHANGE);
-
-  panelStrip.setBrightness(2);
+  panelStrip.setBrightness(50);
   panelStrip.begin();
   panelStrip.show(); // Initialize all pixels to 'off'
 
@@ -56,16 +53,12 @@ void setup() {
   ease.setDuration(2);
   ease.setTotalChangeInPosition(255);
 
-  dockChange();
+  enableInterrupt(coilPin, dockChange, CHANGE);
 }
 
 void loop() {
   checkCapSensors(); // has 10ms delay
-
-  if (start) {
-    startRing();
-    start = false;
-  }
+  checkDock();
 
   if (docked) {
     settled = true;
@@ -96,7 +89,7 @@ void chargingRing() {
 }
 
 void startRing() {
-  for (int lap = 0; lap < startLapCounter; lap++) {
+  while (startLapCounter < 3) {
     for (int i = 0; i < ringTotalLEDs; i++) {
       ring.setPixelColor(i, ring.Color(0, 0, 0));
     }
@@ -112,6 +105,7 @@ void startRing() {
 
     if (startHead >= ringTotalLEDs - 1) {
       startHead = 0;
+      startLapCounter++;
     } else {
       startHead++;
     }
@@ -119,10 +113,11 @@ void startRing() {
     ring.show();
     delay(startDelay);
   }
+  startLapCounter = 0;
   for (int i=0; i<ringTotalLEDs; i++) {
     ring.setPixelColor(i, ring.Color(0, 0, 0));
   }
-  //enableInterrupt(coilPin, dockChange, CHANGE);
+  ring.show();
 }
 
 void setAllPanels() {
@@ -134,26 +129,28 @@ void setAllPanels() {
 void panelSet(int *panel) {
   if (!touch) { // we're turning on
     int colorCounter = 0;
-    int threshold = 127;
+    int threshold = 129;
     while (colorCounter <= threshold) {
       for (int i = 0; i < 8; i++) {
         panelStrip.setPixelColor(panel[i], panelStrip.Color(colorCounter, colorCounter, colorCounter));
         panelStrip.show();
-        colorCounter += 3;
-        delay(10);
+        delay(5);
       }
+     colorCounter += 9;
     }
   } else { // we're turning off
     analogWrite(motorPin, 0);
-    int colorCounter = 127;
+    int colorCounter = 129;
     int threshold = 0;
     while (colorCounter >= threshold) {
+      Serial.println("new loop");
       for (int i = 0; i < 8; i++) {
+        Serial.println(colorCounter);
         panelStrip.setPixelColor(panel[i], panelStrip.Color(colorCounter, colorCounter, colorCounter));
-        panelStrip.show();
-        colorCounter -= 1;
-        delay(10);
+        panelStrip.show();       
+        delay(5);
       }
+      colorCounter -= 9;
     }
   }
 }
@@ -180,9 +177,20 @@ void checkCapSensors() {
   delay(10);
 }
 
-void dockChange() {  
-  Serial.println("CHANGE: " + millis());
-  //startRing();
-  //disableInterrupt(coilPin);
+void dockChange() {
+  checkDock();
 }
+
+void checkDock() {
+  coilVal = analogRead(A5);
+  if (coilVal < 200) {
+    if (docked) {
+      startRing();
+    }
+    docked = false;
+  } else if (coilVal > 350) {
+    docked = true;
+  }
+}
+
 
