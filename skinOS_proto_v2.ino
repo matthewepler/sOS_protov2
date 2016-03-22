@@ -28,7 +28,7 @@ Adafruit_NeoPixel ring = Adafruit_NeoPixel(ringTotalLEDs, ringPin, NEO_RGBW + NE
 BackEase ease;
 double easedPosition, t = 1;
 int fadeDirection = 1;
-int startLen  = 3;  // how long is the snake
+int startLen  = 9;  // how long is the snake
 int startHead = 3; // which pixel is the head
 int startDelay = 10;
 int startLapCounter = 0;
@@ -63,6 +63,8 @@ void loop() {
   if (docked) {
     settled = true;
     chargingRing();
+  } else {
+    settled = false;
   }
 
   if (touch && !docked) {
@@ -89,6 +91,7 @@ void chargingRing() {
 }
 
 void startRing() {
+  settled = false;
   while (startLapCounter < 3) {
     for (int i = 0; i < ringTotalLEDs; i++) {
       ring.setPixelColor(i, ring.Color(0, 0, 0));
