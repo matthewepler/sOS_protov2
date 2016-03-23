@@ -111,6 +111,7 @@ void chargingRing() {
     }
     if (t >= 255 || t <= 0) fadeDirection *= -1;
     t += fadeDirection;
+    Serial.println(t);
   }
 }
 
