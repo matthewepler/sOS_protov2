@@ -13,7 +13,6 @@
 #include <Adafruit_NeoPixel.h>  /* https://github.com/adafruit/Adafruit_NeoPixel */
 #include <CapacitiveSensor.h>   /* https://github.com/PaulStoffregen/CapacitiveSensor */
 #include <EnableInterrupt.h>    /* https://github.com/GreyGnome/EnableInterrupt */
-#include "EasingLibrary.h"      /* http://andybrown.me.uk/2010/12/05/animation-on-the-arduino-with-easing-functions/ */
 
 /* LED PANEL (https://www.adafruit.com/products/2945) */
 const int panelPin = 6;
@@ -35,22 +34,23 @@ int coilVal;
 boolean docked;
 
 /* Vibration motors (https://www.adafruit.com/products/1201) */
-const int motorPin = 10;
+const int motorPin   = 10;
 const int motorSpeed = 255;
 
 /* NeoPixel RGBW ring (https://www.adafruit.com/products/2854) Note! different 3rd parameter in contstructor for this type of LED*/
 const int ringPin = 3;
 const int ringTotalLEDs = 16;
 Adafruit_NeoPixel ring = Adafruit_NeoPixel(ringTotalLEDs, ringPin, NEO_RGBW + NEO_KHZ800);
-BackEase ease;       // for "sleep" pulsing effect
-double easedPosition, t = 1;
-int fadeDirection = 1;
-int startLen  = 9;   // for start-up animation, how long is the snake
-int startHead = 3;   // for start-up animation, which pixel is the head
-int startDelay = 10;
+double blue         = 1;
+int blueThresh      = 150;
+int fadeDirection   = 1;
+int startLen        = 9;   // for start-up animation, how long is the snake
+int startHead       = 3;   // for start-up animation, which pixel is the head
+int startDelay      = 10;
 int startLapCounter = 0;
 boolean settled = true; // used for escaping the sleep animation if interrupted
 
+/* Dev debug vars */
 const int debugLED = 2; // not used in production
 
 
@@ -69,9 +69,6 @@ void setup() {
   ring.setBrightness(200);
   ring.begin();
   ring.show();
-  
-  ease.setDuration(2);
-  ease.setTotalChangeInPosition(255);
 
   enableInterrupt(coilPin, dockChange, CHANGE);
 }
@@ -99,19 +96,19 @@ void loop() {
 ///////////////////////////////////////////////////// CHARGING RING /////
 
 void chargingRing() {
-  for (int i = 0; i <= 255; i++) {
-    easedPosition = ease.easeIn(t); // calculates easing value with ease-in & ease-out interpolation
+  for (int i = 0; i <= blueThresh; i++) {
     for (int i = 0; i < ringTotalLEDs; i++) {
-      ring.setPixelColor(i, ring.Color(0, 0, t));
+      ring.setPixelColor(i, ring.Color(0, 0, blue)); 
       if (settled) {
         ring.show();
       } else { // escape if not docked (otherwise it holds up everything)
         return;
       }
     }
-    if (t >= 255 || t <= 0) fadeDirection *= -1;
-    t += fadeDirection;
-    Serial.println(t);
+    if (blue >= blueThresh || blue <= 0) {
+      fadeDirection *= -1;
+    }
+    blue += fadeDirection;
   }
 }
 
