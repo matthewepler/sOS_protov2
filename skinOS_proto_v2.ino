@@ -1,14 +1,14 @@
 /*
- Matthew Epler
- for Human Condition Labs & SkinOS
- 2016
- Do not use without permission
+  Matthew Epler
+  for Human Condition Labs & SkinOS
+  2016
+  Do not use without permission
 
- Board = Adafruit Feather 32u4 Proto board (https://www.adafruit.com/products/2771)
+  Board = Adafruit Feather 32u4 Proto board (https://www.adafruit.com/products/2771)
          Note: Feather M0 is not compatible with capcitive sensor library
- 
- IDE = Arduino v 1.6.8
- */
+
+  IDE = Arduino v 1.6.8
+*/
 
 #include <Adafruit_NeoPixel.h>  /* https://github.com/adafruit/Adafruit_NeoPixel */
 #include <CapacitiveSensor.h>   /* https://github.com/PaulStoffregen/CapacitiveSensor */
@@ -20,6 +20,7 @@ Adafruit_NeoPixel panelStrip = Adafruit_NeoPixel(32, panelPin, NEO_GRB + NEO_KHZ
 int panelLeft[]   = {0, 1, 8, 9, 16, 17, 24, 25}; // three areas on the board, each 2x4 pixels
 int panelCenter[] = {3, 4, 11, 12, 19, 20, 27, 28};
 int panelRight[]  = {6, 7, 14, 15, 22, 23, 30, 31};
+const int panelSize = 8;
 
 /* Capacitive touch activates LED panel and vibration motors */
 CapacitiveSensor   cs_1 = CapacitiveSensor(5, 12); // 1M resistor between pins
@@ -71,33 +72,33 @@ void setup() {
   ring.show();
 
   enableInterrupt(coilPin, dockChange, CHANGE);
+
 }
 
 ///////////////////////////////////////////////////// LOOP /////////////
 
-void loop() {
+void loop() { 
   checkCapSensors(); // has 10ms delay
-  checkDock();       // for stability, this is checked every loop. doesn't cost much. 
+  checkDock();
 
+  settled = docked;
   if (docked) {
-    settled = true;  // used for escaping the sleep animation if interrupted
     chargingRing();
-  } else {
-    settled = false;
   }
 
   if (touch && !docked) { // start active sequence (LED panel + motors). Panels handled in panelSet() w/ touch bool
-    analogWrite(motorPin, motorSpeed); 
+    analogWrite(motorPin, motorSpeed);
   } else {
     analogWrite(motorPin, 0); // also appears in panelSet() for timing purposes
   }
 }
 
 ///////////////////////////////////////////////////// CHARGING RING /////
+
 void chargingRing() {
   for (int i = 0; i <= blueThresh; i++) {
     for (int i = 0; i < ringTotalLEDs; i++) {
-      ring.setPixelColor(i, ring.Color(0, 0, blue)); 
+      ring.setPixelColor(i, ring.Color(0, 0, blue));
       if (settled) {
         ring.show();
       } else { // escape if not docked (otherwise it holds up everything)
@@ -105,7 +106,7 @@ void chargingRing() {
       }
     }
     if (blue >= blueThresh || blue <= 0) {
-      fadeDirection *= -1;
+      fadeDirection = -fadeDirection;
     }
     blue += fadeDirection;
   }
@@ -116,20 +117,17 @@ void chargingRing() {
 void startRing() {
   settled = false; // interrupts chargingRing sleep animation
   while (startLapCounter < 3) {
-    for (int i = 0; i < ringTotalLEDs; i++) {
-      ring.setPixelColor(i, ring.Color(0, 0, 0));
-    }
+    clearPixels();
 
     int pos = startHead;
     for (int j = 0; j < startLen; j++) {
-      if (pos >= ringTotalLEDs) {
+      ring.setPixelColor(pos++, ring.Color(0, 0, 255));
+      if (pos > ringTotalLEDs) {
         pos = 0;
       }
-      ring.setPixelColor(pos, ring.Color(0, 0, 255));
-      pos++;
     }
 
-    if (startHead >= ringTotalLEDs - 1) {
+    if (startHead > ringTotalLEDs) {
       startHead = 0;
       startLapCounter++;
     } else {
@@ -140,9 +138,7 @@ void startRing() {
     delay(startDelay);
   }
   startLapCounter = 0;
-  for (int i=0; i<ringTotalLEDs; i++) {
-    ring.setPixelColor(i, ring.Color(0, 0, 0));
-  }
+  clearPixels();
   ring.show();
 }
 
@@ -161,52 +157,54 @@ void panelSet(int *panel) {
     int colorCounter = 0;
     int threshold = 129;
     while (colorCounter <= threshold) {
-      for (int i = 0; i < 8; i++) {
-        panelStrip.setPixelColor(panel[i], panelStrip.Color(colorCounter, colorCounter, colorCounter));
-        panelStrip.show();
-        delay(5);
-      }
-     colorCounter += 9; // to change speed, change the delay, not this counter. it's a multiple of 129 that works well. 
+      setLeds(panel, colorCounter);
+      colorCounter += 9; // to change speed, change the delay, not this counter. it's a multiple of 129 that works well.
     }
   } else { // we're turning off
     analogWrite(motorPin, 0);
     int colorCounter = 129;
     int threshold = 0;
     while (colorCounter >= threshold) {
-      Serial.println("new loop");
-      for (int i = 0; i < 8; i++) {
-        Serial.println(colorCounter);
-        panelStrip.setPixelColor(panel[i], panelStrip.Color(colorCounter, colorCounter, colorCounter));
-        panelStrip.show();       
-        delay(5);
-      }
-      colorCounter -= 9; // to change speed, change the delay, not this counter. it's a multiple of 129 that works well. 
+      setLeds(panel, colorCounter);
+      colorCounter -= 9; // to change speed, change the delay, not this counter. it's a multiple of 129 that works well.
     }
+  }
+}
+
+///////////////////////////////////////////////////// PANEL SET //////////
+void setLeds(int *panel, int colorCounter) {
+  for (int i = 0; i < panelSize; i++) { // ***
+    panelStrip.setPixelColor(panel[i], panelStrip.Color(colorCounter, colorCounter, colorCounter));
+    panelStrip.show();
+    delay(5);
   }
 }
 
 /////////////////////////////////////////////// CHECK CAP SENSORS /////////
 
 void checkCapSensors() {
-  long cap1 =  cs_1.capacitiveSensor(30);
-  long cap2 =  cs_2.capacitiveSensor(30);
-  if ( cap1 > touchThreshold && cap2 > touchThreshold && !docked) {
-    if (!touch) {
-      setAllPanels();
-      touch = true;
-    }
-  } else {
-    if (touch) {
-      if (offCounter > 100) {
+  if (!docked) {
+    long cap1 =  cs_1.capacitiveSensor(30);
+    long cap2 =  cs_2.capacitiveSensor(30);
+
+    if (cap1 > touchThreshold && cap2 > touchThreshold) {
+      if (!touch) {
         setAllPanels();
-        offCounter = 0;
-        touch = false;
-      } else {
-        offCounter++;
+        touch = true;
+      }
+    } else {
+      if (touch) {
+        if (offCounter > 100) {
+          setAllPanels();
+          offCounter = 0;
+          touch = false;
+        } else {
+          offCounter++;
+        }
       }
     }
+    delay(10);
   }
-  delay(10);
 }
 
 ///////////////////////////////////////////////////// DOCK CHANGE //////////
@@ -222,10 +220,18 @@ void checkDock() {
   if (coilVal < 200) { // if we were docked but now we're not (low charge from induction coils)
     if (docked) {
       startRing();
+      docked = false;
     }
-    docked = false;
   } else if (coilVal > 350) {  // we are docked (charge from induction coils)
     docked = true;
+  }
+}
+
+///////////////////////////////////////////////////// CLEAR NEOPIXELS //////
+
+void clearPixels() {
+  for (int i = 0; i < ringTotalLEDs; i++) {
+    ring.setPixelColor(i, ring.Color(0, 0, 0));
   }
 }
 
