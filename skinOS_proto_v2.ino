@@ -31,7 +31,8 @@ int offCounter;
 
 /* Inductive charger as switch - using coil from hacked Clarisonic device */
 const int coilPin = A5;
-int coilVal;
+const int interruptPin = 2;
+volatile int coilVal;
 boolean docked;
 
 /* Vibration motors (https://www.adafruit.com/products/1201) */
@@ -71,7 +72,7 @@ void setup() {
   ring.begin();
   ring.show();
 
-  enableInterrupt(coilPin, dockChange, CHANGE);
+  enableInterrupt(interruptPin, dockChange, CHANGE);
 
 }
 
@@ -80,6 +81,9 @@ void setup() {
 void loop() { 
   checkCapSensors(); // has 10ms delay
   checkDock();
+
+  Serial.println(analogRead(coilPin));
+  Serial.println(docked);
 
   settled = docked;
   if (docked) {
